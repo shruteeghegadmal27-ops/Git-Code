@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<configuration-properties doc:name="Configuration properties" doc:id="291c700b-c287-4a8b-aa41-e1f5939cffcc" file="dev.yaml" />
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config">
+    <salesforce:basic-connection 
+        username="shrutee.ghegadmal.4c2e620e53e0@agentforce.com" 
+        password="ChoiSan@27" 
+        url="httsp://login.salesforce.com/services/Soap/u/53.0" securityToken="em9ZRV1kJBF4RQnxkMLCM9fm"/>
+</salesforce:sfdc-config>
+	<os:object-store name="ObjectStore_Config" doc:name="Object store" doc:id="3828273b-6c8f-41d2-a34e-6f77fcf2cfec" entryTtl="2592000"/>
+<!-- 	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="3dd3eabf-e3ee-4c81-a4ef-5ccedcb4c4f3" file="${mule.env}.yaml" key="${secure.key}" /> -->
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="3094173d-16cd-40c0-82cf-c302491ba532" >
+		<http:listener-connection host="0.0.0.0" port="8082" />
+	</http:listener-config>
+<!-- 	<salesforce:sfdc-config name="Salesforce_Config_oAuth" doc:name="Salesforce Config" doc:id="c4221d94-2394-4154-bd44-7b2e6ef19dc4" > -->
+<!-- 		<salesforce:config-with-oauth-connection > -->
+<!-- 			<salesforce:oauth-authorization-code consumerKey="3MVG9dAEux2v1sLvaM0URFqSSDNEZJ6SoGXF9yosWV_kxZ7mOIbImoV6qxeEoJMcFzYGRqE4azxP2T93SL0bh" consumerSecret="C7290A6F6E557AC5E75A23F85C98F9A0CED73BC7815C3CF5D4F5E5BDFADD2B75" /> -->
+<!-- 			<salesforce:oauth-callback-config listenerConfig="HTTP_Listener_config" callbackPath="/callback" authorizePath="/authorize" externalCallbackUrl="http://localhost:8081/callback" /> -->
+<!-- 		</salesforce:config-with-oauth-connection> -->
+<!-- 	</salesforce:sfdc-config> -->
+	
+</mule>

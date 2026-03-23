@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "Accountid": { "type": "string", "minLength": 1 },
+    "Birthdate": { "type": ["string", "null"] },
+    "Department": { "type": ["string", "null"] },
+    "Email": { "type": "string", "format": "email" },
+    "Mobile": { "type": ["string", "null"] }
+  },
+  "required": ["Accountid", "Email"]
+}

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	<error-handler name="global-error-handler">
+    <on-error-propagate type="JSON:SCHEMA_NOT_HONOURED" doc:name="On Error Propagate">
+        <ee:transform doc:name="Build Error Payload">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "error": {
+        "correlationId": correlationId,
+        "timestamp": now(),
+        "category": "Data Validation",
+        "errorCode": "ERR-VAL-001",
+        "exception": error.errorType.identifier,
+        "message": error.description
+    }
+}
+]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <logger level="ERROR" doc:name="Log Error" message="#[payload]"/> </on-error-propagate>
+    
+    <on-error-propagate type="ANY" doc:name="Catch All">
+        </on-error-propagate>
+</error-handler>
+</mule>

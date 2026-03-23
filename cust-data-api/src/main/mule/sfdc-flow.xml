@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:amqp="http://www.mulesoft.org/schema/mule/amqp"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os" 
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" 
+	xmlns="http://www.mulesoft.org/schema/mule/core" 
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/amqp http://www.mulesoft.org/schema/mule/amqp/current/mule-amqp.xsd">
+
+	<os:object-store name="Watermark_Object_Store" persistent="true" maxEntries="1" entryTtl="30" entryTtlUnit="DAYS" doc:name="Object store" />
+	
+	<amqp:config name="AMQP_Config" doc:name="AMQP Config">
+		<amqp:connection host="${rabbitmq.host}" virtualHost="${rabbitmq.virtual_host}" username="${rabbitmq.username}" password="${rabbitmq.password}">
+			<reconnection>
+			
+</reconnection>
+		</amqp:connection>
+	</amqp:config>
+
+	<http:request-config name="Email_API_Config" doc:name="HTTP Request configuration">
+		<http:request-connection host="${email.host}" port="${email.port}" />
+	</http:request-config>
+
+	<flow name="sfdc-to-mq-producer-flow">
+		<scheduler doc:name="Every 30 Mins">
+			<scheduling-strategy>
+				<fixed-frequency frequency="30" timeUnit="MINUTES"/>
+			</scheduling-strategy>
+		</scheduler>
+		
+		<logger level="INFO" message="Started Salesforce Contact Polling"/>
+		
+		<os:retrieve doc:name="Retrieve Watermark" key="watermark" objectStore="Watermark_Object_Store">
+			<os:default-value><![CDATA[#[p('sfdc.default.watermark')]]]></os:default-value>
+		</os:retrieve>
+
+		<salesforce:query doc:name="Query Contacts" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query><![CDATA[SELECT Id, AccountId, Birthdate, Department, Email, MobilePhone, LastModifiedDate FROM Contact WHERE LastModifiedDate > :watermark]]></salesforce:salesforce-query>
+			<salesforce:parameters><![CDATA[#[{'watermark': payload}]]]></salesforce:parameters>
+		</salesforce:query>
+
+		<choice doc:name="Choice">
+			<when expression="#[sizeOf(payload) > 0]">
+				<os:store doc:name="Update Watermark" key="watermark" objectStore="Watermark_Object_Store">
+					<os:value><![CDATA[#[max(payload.*LastModifiedDate)]]]></os:value>
+				</os:store>
+				<foreach doc:name="For Each Contact">
+					<ee:transform doc:name="Map to Canonical JSON">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/json deferred=true
+---
+{
+    Accountid: payload.AccountId,
+    Birthdate: payload.Birthdate as String default "",
+    Department: payload.Department,
+    Email: payload.Email,
+    Mobile: payload.MobilePhone
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<json:validate-schema doc:name="Validate Schema" schema="schemas/contact-schema.json" />
+					<amqp:publish doc:name="Publish to RabbitMQ" 
+    config-ref="AMQP_Config" 
+    exchangeName="customer.updates.exchange">
+    <amqp:routing-keys>
+        <amqp:routing-key value="customer.updates.queue" />
+    </amqp:routing-keys>
+</amqp:publish>
+				</foreach>
+			</when>
+			<otherwise>
+				<logger level="INFO" message="No new records found in Salesforce."/>
+			</otherwise>
+		</choice>
+		
+		<logger level="INFO" message="Completed Salesforce Contact Polling"/>
+		<error-handler ref="global-error-handler" />
+	</flow>
+
+	<flow name="mq-to-email-consumer-flow">
+		<amqp:listener doc:name="RabbitMQ Listener" config-ref="AMQP_Config" queueName="customer.updates.queue" ackMode="MANUAL" numberOfConsumers="1">
+			<amqp:listener-quality-of-service-config prefetchCount="10" />
+		</amqp:listener>
+
+		<logger level="INFO" message="Received contact update for: #[payload.Email]"/>
+		
+		<ee:transform doc:name="Format Email Body">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "to": payload.Email,
+    "subject": "Update to your Customer Profile",
+    "body": "Dear Customer, changes have been made to your profile (Account: " ++ (payload.Accountid default "") ++ ")."
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+
+		<http:request method="POST" doc:name="Invoke Email API" config-ref="Email_API_Config" path="/send">
+			<http:headers><![CDATA[#[{'to': payload.to}]]]></http:headers>
+		</http:request>
+
+		<amqp:ack doc:name="Manual Ack Success" ackId="#[attributes.ackId]" />
+		
+		<logger level="INFO" message="Email successfully sent to: #[payload.to]"/>
+		<error-handler ref="global-error-handler" />
+	</flow>
+</mule>

@@ -1,0 +1,27 @@
+sfdc:
+  username: "shrutee.ghegadmal.4c2e620e53e0@agentforce.com"
+  password: "ChoiSan@27" 
+  token: "em9ZRV1kJBF4RQnxkMLCM9fm"
+  # IMPORTANT: Use the /u/ version for the Partner API
+  url: "https://orgfarm-c26848719d-dev-ed.develop.my.salesforce.com/services/Soap/u/59.0"
+  default:
+    watermark: "2024-01-01T00:00:00.000Z"
+
+anypoint_mq:
+  url: "https://mq-us-east-1.anypoint.mulesoft.com/api/v1"
+  client_id: "your_mq_client_id"
+  client_secret: "![enc_mq_secret]"
+  queue_name: "contact-update-queue"
+
+rabbitmq:
+  host: "gerbil.rmq.cloudamqp.com"
+  port: "5672"
+  virtual_host: "/yiaitqnw"
+  username: "yiaitqnw:yiaitqnw"
+  password: "1O9SIMInnsS-EDITTWBgtmPEFpbchaf2" # Remember to encrypt this later!
+  
+email:
+  host: "smtp.gmail.com"
+  port: "587"
+  user: "shruteeghegadmal27@gmail.com"
+  password: "![enc_app_password]"
